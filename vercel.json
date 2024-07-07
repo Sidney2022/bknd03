@@ -11,7 +11,7 @@
         "use": "@vercel/static-build",
         "config": {
           "distDir": "staticfiles",
-          "installCommand": "python -m pip install -r requirements.txt"
+          "installCommand": "python -m pip3 install -r requirements.txt"
         }
       }
     ],
