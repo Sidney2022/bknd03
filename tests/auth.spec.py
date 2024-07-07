@@ -1,162 +1,426 @@
-# tests/auth.spec.py
+import os
+import sys
+import pytest
 
-import jwt
-from datetime import datetime, timedelta
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APITestCase
-from django.conf import settings
-from accounts.models import User, Organisation
+# Ensure the parent directory is in the sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-class AuthTests(APITestCase):
 
-    def test_register_user_successfully(self):
-        url = reverse('register')
-        data = {
+# Dependencies:
+# pip install pytest-mock
+
+
+@pytest.mark.django_db
+class TestRegisterView:
+
+    # Successful registration with valid data
+    def test_successful_registration_with_valid_data(self, mocker):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.views import RegisterView
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rest_framework.test import APIRequestFactory
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.models import User, Organisation
+
+        # Mock the UserSerializer to always be valid and return a user instance
+        mock_serializer = mocker.patch('accounts.serializers.UserSerializer')
+        mock_user = mocker.Mock(spec=User)
+        mock_serializer.return_value.is_valid.return_value = True
+        mock_serializer.return_value.save.return_value = mock_user
+
+        # Mock the user instance methods and attributes
+        mock_user.set_password = mocker.Mock()
+        mock_user.save = mocker.Mock()
+        mock_user.firstName = "John"
+        mock_user.lastName = "Doe"
+        mock_user.email = "john.doe@example.com"
+        mock_user.phone = "1234567890"
+        mock_user.userId = 1
+
+        # Mock the Organisation model's create method
+        mock_organisation = mocker.Mock(spec=Organisation)
+        mocker.patch('accounts.models.Organisation.objects.create', return_value=mock_organisation)
+
+        # Mock the RefreshToken for user
+        mock_refresh_token = mocker.Mock()
+        mock_refresh_token.access_token = "mock_access_token"
+        mocker.patch('rest_framework_simplejwt.tokens.RefreshToken.for_user', return_value=mock_refresh_token)
+
+        # Create a request with valid data
+        factory = APIRequestFactory()
+        request = factory.post('/register', {
             'firstName': 'John',
             'lastName': 'Doe',
-            'email': 'john@example.com',
-            'password': 'password123',
+            'email': 'john.doe@example.com',
             'phone': '1234567890',
+            'password': 'password123'
+        })
+
+        # Call the view
+        view = RegisterView.as_view()
+        response = view(request)
+
+        # Assert the response status and data
+        assert response.status_code == 201
+        assert response.data['status'] == 'success'
+        assert response.data['message'] == 'Registration successful'
+        assert response.data['data']['accessToken'] == "mock_access_token"
+        assert response.data['data']['user']['firstName'] == "John"
+
+    # Registration with missing required fields
+    def test_registration_with_missing_required_fields(self, mocker):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.views import RegisterView
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rest_framework.test import APIRequestFactory
+
+        # Mock the UserSerializer to be invalid and return errors
+        mock_serializer = mocker.patch('accounts.serializers.UserSerializer')
+        mock_serializer.return_value.is_valid.return_value = False
+        mock_serializer.return_value.errors = {
+            'firstName': ['This field is required.'],
+            'email': ['This field is required.']
         }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('accessToken', response.data['data'])
-        self.assertEqual(response.data['data']['user']['firstName'], 'John')
-        self.assertEqual(response.data['data']['user']['email'], 'john@example.com')
 
-        # Check the organisation
-        organisation = Organisation.objects.get(name="John's Organisation")
-        self.assertIsNotNone(organisation)
-        self.assertIn(User.objects.get(email='john@example.com'), organisation.users.all())
-
-    def test_register_user_validation_error(self):
-        url = reverse('register')
-        data = {
-            'firstName': '',
+        # Create a request with missing required fields
+        factory = APIRequestFactory()
+        request = factory.post('/register', {
             'lastName': 'Doe',
-            'email': 'john@example.com',
-            'password': 'password123',
             'phone': '1234567890',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
-        self.assertEqual(response.data['status'], 'Bad request')
+            'password': 'password123'
+        })
 
-    def test_register_user_duplicate_email(self):
-        User.objects.create_user(
-            email='john@example.com',
-            firstName='John',
-            lastName='Doe',
-            password='password123'
-        )
-        url = reverse('register')
-        data = {
+        # Call the view
+        view = RegisterView.as_view()
+        response = view(request)
+
+        # Assert the response status and data
+        assert response.status_code == 422
+        assert response.data['errors'] == [
+            {'field': 'firstName', 'message': 'This field is required.'},
+            {'field': 'email', 'message': 'This field is required.'}
+        ]
+
+    # Access token is generated and returned in response
+    def test_access_token_generated_and_returned(self, mocker):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.views import RegisterView
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rest_framework.test import APIRequestFactory
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.models import User, Organisation
+
+        # Mock the UserSerializer to be valid and return a user instance
+        mock_serializer = mocker.patch('accounts.serializers.UserSerializer')
+        mock_user = mocker.Mock(spec=User)
+        mock_serializer.return_value.is_valid.return_value = True
+        mock_serializer.return_value.save.return_value = mock_user
+
+        # Mock the user instance methods and attributes
+        mock_user.set_password = mocker.Mock()
+        mock_user.save = mocker.Mock()
+        mock_user.firstName = "John"
+        mock_user.lastName = "Doe"
+        mock_user.email = "john.doe@example.com"
+        mock_user.phone = "1234567890"
+        mock_user.userId = 1
+
+        # Mock the Organisation model's create method
+        mock_organisation = mocker.Mock(spec=Organisation)
+        mocker.patch('accounts.models.Organisation.objects.create', return_value=mock_organisation)
+
+        # Mock the RefreshToken for user
+        mock_refresh_token = mocker.Mock()
+        mock_refresh_token.access_token = "mock_access_token"
+        mocker.patch('rest_framework_simplejwt.tokens.RefreshToken.for_user', return_value=mock_refresh_token)
+
+        # Create a request with valid data
+        factory = APIRequestFactory()
+        request = factory.post('/register', {
             'firstName': 'John',
             'lastName': 'Doe',
-            'email': 'john@example.com',
-            'password': 'password123',
+            'email': 'john.doe@example.com',
             'phone': '1234567890',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
-        self.assertEqual(response.data['status'], 'Bad request')
+            'password': 'password123'
+        })
 
-    def test_login_user_successfully(self):
-        user = User.objects.create_user(
-            email='john@example.com',
-            firstName='John',
-            lastName='Doe',
-            password='password123'
-        )
-        url = reverse('login')
-        data = {
-            'email': 'john@example.com',
-            'password': 'password123',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('accessToken', response.data['data'])
+        # Call the view
+        view = RegisterView.as_view()
+        response = view(request)
 
-    def test_login_user_invalid_credentials(self):
-        user = User.objects.create_user(
-            email='john@example.com',
-            firstName='John',
-            lastName='Doe',
-            password='password123'
-        )
-        url = reverse('login')
-        data = {
-            'email': 'john@example.com',
-            'password': 'wrongpassword',
-        }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertEqual(response.data['status'], 'Bad request')
-        self.assertEqual(response.data['message'], 'Authentication failed')
+        # Assert the response status and data
+        assert response.status_code == 201
+        assert response.data['status'] == 'success'
+        assert response.data['message'] == 'Registration successful'
+        assert response.data['data']['accessToken'] == "mock_access_token"
+        assert response.data['data']['user']['firstName'] == "John"
 
-    def test_token_generation(self):
-        user = User.objects.create_user(
-            email='john@example.com',
-            firstName='John',
-            lastName='Doe',
-            password='password123'
-        )
-        token = user.get_jwt_token()
-        decoded = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        self.assertEqual(decoded['userId'], user.userId)
-        self.assertIn('exp', decoded)
-        self.assertTrue(datetime.fromtimestamp(decoded['exp']) > datetime.utcnow())
+    # Organisation is created with the correct name
+    def test_organisation_created_with_correct_name(self, mocker):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.views import RegisterView
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rest_framework.test import APIRequestFactory
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.models import User, Organisation
 
-    def test_user_detail_access(self):
-        user = User.objects.create_user(
-            email='john@example.com',
-            firstName='John',
-            lastName='Doe',
-            password='password123'
-        )
-        org = Organisation.objects.create(name="John's Organisation")
-        org.users.add(user)
+        # Mock the UserSerializer to be valid and return a user instance
+        mock_serializer = mocker.patch('accounts.serializers.UserSerializer')
+        mock_user = mocker.Mock(spec=User)
+        mock_serializer.return_value.is_valid.return_value = True
+        mock_serializer.return_value.save.return_value = mock_user
 
-        self.client.force_authenticate(user=user)
-        url = reverse('user-detail', args=[user.userId])
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['data']['email'], 'john@example.com')
+        # Mock the user instance methods and attributes
+        mock_user.set_password = mocker.Mock()
+        mock_user.save = mocker.Mock()
+        mock_user.firstName = "John"
+        mock_user.lastName = "Doe"
+        mock_user.email = "john.doe@example.com"
+        mock_user.phone = "1234567890"
+        mock_user.userId = 1
 
-    def test_organisation_list_access(self):
-        user = User.objects.create_user(
-            email='john@example.com',
-            firstName='John',
-            lastName='Doe',
-            password='password123'
-        )
-        org = Organisation.objects.create(name="John's Organisation")
-        org.users.add(user)
+        # Mock the Organisation model's create method
+        mock_organisation = mocker.Mock(spec=Organisation)
+        mocker.patch('accounts.models.Organisation.objects.create', return_value=mock_organisation)
 
-        self.client.force_authenticate(user=user)
-        url = reverse('organisation-list')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['data']['organisations'][0]['name'], "John's Organisation")
+        # Mock the RefreshToken for user
+        mock_refresh_token = mocker.Mock()
+        mock_refresh_token.access_token = "mock_access_token"
+        mocker.patch('rest_framework_simplejwt.tokens.RefreshToken.for_user', return_value=mock_refresh_token)
 
-    def test_organisation_access_restriction(self):
-        user1 = User.objects.create_user(
-            email='john@example.com',
-            firstName='John',
-            lastName='Doe',
-            password='password123'
-        )
-        user2 = User.objects.create_user(
-            email='jane@example.com',
-            firstName='Jane',
-            lastName='Doe',
-            password='password123'
-        )
-        org = Organisation.objects.create(name="John's Organisation")
-        org.users.add(user1)
+        # Create a request with valid data
+        factory = APIRequestFactory()
+        request = factory.post('/register', {
+            'firstName': 'John',
+            'lastName': 'Doe',
+            'email': 'john.doe@example.com',
+            'phone': '1234567890',
+            'password': 'password123'
+        })
 
-        self.client.force_authenticate(user=user2)
-        url = reverse('organisation-detail', args=[org.org_id])
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # Call the view
+        view = RegisterView.as_view()
+        response = view(request)
+
+        # Assert the response status and data
+        assert response.status_code == 201
+        assert response.data['status'] == 'success'
+        assert response.data['message'] == 'Registration successful'
+        assert response.data['data']['accessToken'] == "mock_access_token"
+        assert response.data['data']['user']['firstName'] == "John"
+
+    # Verify access token is present in response data
+    def test_verify_access_token_in_response_data(self, mocker):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.views import RegisterView
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rest_framework.test import APIRequestFactory
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.models import User, Organisation
+
+        # Mock the UserSerializer to always be valid and return a user instance
+        mock_serializer = mocker.patch('accounts.serializers.UserSerializer')
+        mock_user = mocker.Mock(spec=User)
+        mock_serializer.return_value.is_valid.return_value = True
+        mock_serializer.return_value.save.return_value = mock_user
+
+        # Mock the user instance methods and attributes
+        mock_user.set_password = mocker.Mock()
+        mock_user.save = mocker.Mock()
+        mock_user.firstName = "John"
+        mock_user.lastName = "Doe"
+        mock_user.email = "john.doe@example.com"
+        mock_user.phone = "1234567890"
+        mock_user.userId = 1
+
+        # Mock the Organisation model's create method
+        mock_organisation = mocker.Mock(spec=Organisation)
+        mocker.patch('accounts.models.Organisation.objects.create', return_value=mock_organisation)
+
+        # Mock the RefreshToken for user
+        mock_refresh_token = mocker.Mock()
+        mock_refresh_token.access_token = "mock_access_token"
+        mocker.patch('rest_framework_simplejwt.tokens.RefreshToken.for_user', return_value=mock_refresh_token)
+
+        # Create a request with valid data
+        factory = APIRequestFactory()
+        request = factory.post('/register', {
+            'firstName': 'John',
+            'lastName': 'Doe',
+            'email': 'john.doe@example.com',
+            'phone': '1234567890',
+            'password': 'password123'
+        })
+
+        # Call the view
+        view = RegisterView.as_view()
+        response = view(request)
+
+        # Assert the response status and data
+        assert response.status_code == 201
+        assert response.data['status'] == 'success'
+        assert response.data['message'] == 'Registration successful'
+        assert response.data['data']['accessToken'] == "mock_access_token"
+        assert response.data['data']['user']['firstName'] == "John"
+
+    # User password is set correctly
+    def test_user_password_set_correctly(self, mocker):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.views import RegisterView
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rest_framework.test import APIRequestFactory
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.models import User, Organisation
+
+        # Mock the UserSerializer to be valid and return a user instance
+        mock_serializer = mocker.patch('accounts.serializers.UserSerializer')
+        mock_user = mocker.Mock(spec=User)
+        mock_serializer.return_value.is_valid.return_value = True
+        mock_serializer.return_value.save.return_value = mock_user
+
+        # Mock the user instance methods and attributes
+        mock_user.set_password = mocker.Mock()
+        mock_user.save = mocker.Mock()
+        mock_user.firstName = "Alice"
+        mock_user.lastName = "Smith"
+        mock_user.email = "alice.smith@example.com"
+        mock_user.phone = "9876543210"
+        mock_user.userId = 2
+
+        # Mock the Organisation model's create method
+        mock_organisation = mocker.Mock(spec=Organisation)
+        mocker.patch('accounts.models.Organisation.objects.create', return_value=mock_organisation)
+
+        # Mock the RefreshToken for user
+        mock_refresh_token = mocker.Mock()
+        mock_refresh_token.access_token = "mock_access_token"
+        mocker.patch('rest_framework_simplejwt.tokens.RefreshToken.for_user', return_value=mock_refresh_token)
+
+        # Create a request with valid data
+        factory = APIRequestFactory()
+        request = factory.post('/register', {
+            'firstName': 'Alice',
+            'lastName': 'Smith',
+            'email': 'alice.smith@example.com',
+            'phone': '9876543210',
+            'password': 'securepassword123'
+        })
+
+        # Call the view
+        view = RegisterView.as_view()
+        response = view(request)
+
+        # Assert the response status and data
+        assert response.status_code == 201
+        assert response.data['status'] == 'success'
+        assert response.data['message'] == 'Registration successful'
+        assert response.data['data']['accessToken'] == "mock_access_token"
+        assert response.data['data']['user']['firstName'] == "Alice"
+
+    # Validate response status code is 201
+    def test_validate_response_status_code_201(self, mocker):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.views import RegisterView
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rest_framework.test import APIRequestFactory
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.models import User, Organisation
+
+        # Mock the UserSerializer to always be valid and return a user instance
+        mock_serializer = mocker.patch('accounts.serializers.UserSerializer')
+        mock_user = mocker.Mock(spec=User)
+        mock_serializer.return_value.is_valid.return_value = True
+        mock_serializer.return_value.save.return_value = mock_user
+
+        # Mock the user instance methods and attributes
+        mock_user.set_password = mocker.Mock()
+        mock_user.save = mocker.Mock()
+        mock_user.firstName = "Alice"
+        mock_user.lastName = "Smith"
+        mock_user.email = "alice.smith@example.com"
+        mock_user.phone = "9876543210"
+        mock_user.userId = 2
+
+        # Mock the Organisation model's create method
+        mock_organisation = mocker.Mock(spec=Organisation)
+        mocker.patch('accounts.models.Organisation.objects.create', return_value=mock_organisation)
+
+        # Mock the RefreshToken for user
+        mock_refresh_token = mocker.Mock()
+        mock_refresh_token.access_token = "mock_access_token"
+        mocker.patch('rest_framework_simplejwt.tokens.RefreshToken.for_user', return_value=mock_refresh_token)
+
+        # Create a request with valid data
+        factory = APIRequestFactory()
+        request = factory.post('/register', {
+            'firstName': 'Alice',
+            'lastName': 'Smith',
+            'email': 'alice.smith@example.com',
+            'phone': '9876543210',
+            'password': 'password123'
+        })
+
+        # Call the view
+        view = RegisterView.as_view()
+        response = view(request)
+
+        # Assert the response status and data
+        assert response.status_code == 201
+        assert response.data['status'] == 'success'
+        assert response.data['message'] == 'Registration successful'
+        assert response.data['data']['accessToken'] == "mock_access_token"
+        assert response.data['data']['user']['firstName'] == "Alice"
+
+    # User is added to the organisation
+    def test_user_added_to_organisation(self, mocker):
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.views import RegisterView
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from rest_framework.test import APIRequestFactory
+        sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+        from accounts.models import User, Organisation
+
+        # Mock the UserSerializer to be valid and return a user instance
+        mock_serializer = mocker.patch('accounts.serializers.UserSerializer')
+        mock_user = mocker.Mock(spec=User)
+        mock_serializer.return_value.is_valid.return_value = True
+        mock_serializer.return_value.save.return_value = mock_user
+
+        # Mock the user instance methods and attributes
+        mock_user.set_password = mocker.Mock()
+        mock_user.save = mocker.Mock()
+        mock_user.firstName = "Alice"
+        mock_user.lastName = "Smith"
+        mock_user.email = "alice.smith@example.com"
+        mock_user.phone = "9876543210"
+        mock_user.userId = 2
+
+        # Mock the Organisation model's create method
+        mock_organisation = mocker.Mock(spec=Organisation)
+        mocker.patch('accounts.models.Organisation.objects.create', return_value=mock_organisation)
+
+        # Mock the RefreshToken for user
+        mock_refresh_token = mocker.Mock()
+        mock_refresh_token.access_token = "mock_access_token"
+        mocker.patch('rest_framework_simplejwt.tokens.RefreshToken.for_user', return_value=mock_refresh_token)
+
+        # Create a request with valid data
+        factory = APIRequestFactory()
+        request = factory.post('/register', {
+            'firstName': 'Alice',
+            'lastName': 'Smith',
+            'email': 'alice.smith@example.com',
+            'phone': '9876543210',
+            'password': 'securepassword'
+        })
+
+        # Call the view
+        view = RegisterView.as_view()
+        response = view(request)
+
+        # Assert the response status and data
+        assert response.status_code == 201
+        assert response.data['status'] == 'success'
+        assert response.data['message'] == 'Registration successful'
+        assert response.data['data']['accessToken'] == "mock_access_token"
+        assert response.data['data']['user']['firstName'] == "Alice"

@@ -1,4 +1,5 @@
 
+import dj_database_url
 
 from pathlib import Path
 
@@ -15,7 +16,7 @@ SECRET_KEY = 'django-insecure-ywd$ahfjkipcergf5g@tt#!#$hoi+wk%yjq^1ao0moqsz7@jq&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*', "127.0.0.1", ".vercel.app", ".now.sh"]
 
 
 # Application definition
@@ -69,24 +70,18 @@ WSGI_APPLICATION = 'bknd03.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'yourdbname',
-#         'USER': 'yourdbuser',
-#         'PASSWORD': 'yourdbpassword',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
 
+DATABASE_URL =  "postgres://default:jdtGeA0wcTU8@ep-steep-meadow-a4rcig20.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require"
+
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -163,3 +158,8 @@ SIMPLE_JWT = {
 
     'JTI_CLAIM': 'jti',
 }
+import os
+
+STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
+STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
