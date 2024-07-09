@@ -1,7 +1,7 @@
 
 from django.contrib import admin
 from django.urls import path, include
-from accounts.views import LoginView, RegisterView
+from accounts.views import LoginView, RegisterView, AvailableEndPoints
 from django.conf import settings
 from django.conf.urls import static
 from django.views.static import serve
@@ -12,6 +12,7 @@ urlpatterns = [
     path('api/', include('accounts.urls')),
     path('auth/login', LoginView.as_view(), name='login'),
     path('auth/register', RegisterView.as_view(), name='register'),
+    path('', AvailableEndPoints.as_view()),  
     path('api-auth/', include('rest_framework.urls')),  
 ]
 

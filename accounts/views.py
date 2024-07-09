@@ -209,11 +209,7 @@ class OrganisationView(generics.ListCreateAPIView):
 class AvailableEndPoints(APIView):
     def get(self, request):
         response = {
-            f"Register --  / POST /" : "/auth/register",
-            f"Login --  / POST /" : "/auth/login",
-            f"Organisations List --  / GET /" : "/api/organisations",
-            f"Single Organisation --  / GET /" : "/api/organisations/<org_id>",
-            f"Create Organisation --  / POST /" : "/api/organisations/<org_id>/users",
+            "message ":"not found"
 
         }
-        return Response(response)
+        return Response(response, status=404)

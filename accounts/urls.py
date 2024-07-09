@@ -6,7 +6,7 @@ urlpatterns = [
     path('auth/login', views.LoginView.as_view(), ),
     path('organisations', views.OrganisationView.as_view(), name='organisation-view'),
     path('organisations/<str:org_id>/users', views.AddUserToOrganisationView.as_view(), name='organisation-add-user'),
-
     path('users/<str:id>', views.UserDetailView.as_view(), name='user-detail'),
+    path('', views.AvailableEndPoints.as_view()),
 
 ]
