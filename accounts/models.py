@@ -22,15 +22,16 @@ class UserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
         return user
-
+        
     def create_superuser(self, email, firstName, lastName, password=None):
         user = self.create_user(
             email,
-            password=password,
             firstName=firstName,
             lastName=lastName,
         )
+        
         user.is_admin = True
+        user.set_password(password)
         user.save(using=self._db)
         return user
 
@@ -66,7 +67,7 @@ class User(AbstractBaseUser):
     def save(self, *args, **kwargs):
         if not self.userId:
             self.generate_unique_field()
-        self.set_password(self.password)
+        # self.set_password(self.password)
         super(User, self).save(*args, **kwargs)
 
 

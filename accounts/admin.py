@@ -5,10 +5,14 @@ from django.contrib.auth.admin import UserAdmin
 
 # class ProfileAdmin(UserAdmin):
 #     model = Profile
-#     list_display = [ 'user_id', 'email', 'first_name', 'last_name']
+#     list_display = ['email', 'userId','password',  'firstName', 'lastName']
+#     list_filter = ['userId', 'email']
+#     ordering = ['userId']
+#     filter_horizontal = []
   
 class OrganisationAdmin(admin.ModelAdmin):
     list_display = ['name', 'org_id', 'description']
+
 
 admin.site.register(Profile)
 admin.site.register(Organisation, OrganisationAdmin)
