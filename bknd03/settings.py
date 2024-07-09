@@ -79,11 +79,17 @@ DATABASES = {
     }
 }
 
-DATABASE_URL =  "postgres://default:jdtGeA0wcTU8@ep-steep-meadow-a4rcig20.us-east-1.aws.neon.tech:5432/verceldb?sslmode=require"
+
+# DATABASE_URL="postgresql://bknd_db_user:VX11eqGr956y4yy7gWstOfOUkQ88QtJI@dpg-cq6k1u56l47c739qku70-a.oregon-postgres.render.com/bknd_db"
 
 # DATABASES = {
-#     'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+#     'default': dj_database_url.config(
+#         # Replace this value with your local database's connection string.
+#         default=DATABASE_URL,
+#         conn_max_age=97
+#     )
 # }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
