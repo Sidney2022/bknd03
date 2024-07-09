@@ -72,23 +72,23 @@ WSGI_APPLICATION = 'bknd03.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
-
-# DATABASE_URL="postgresql://bknd_db_user:VX11eqGr956y4yy7gWstOfOUkQ88QtJI@dpg-cq6k1u56l47c739qku70-a.oregon-postgres.render.com/bknd_db"
-
 # DATABASES = {
-#     'default': dj_database_url.config(
-#         # Replace this value with your local database's connection string.
-#         default=DATABASE_URL,
-#         conn_max_age=97
-#     )
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
 # }
+
+
+DATABASE_URL="postgresql://bknd_db_user:VX11eqGr956y4yy7gWstOfOUkQ88QtJI@dpg-cq6k1u56l47c739qku70-a.oregon-postgres.render.com/bknd_db"
+
+DATABASES = {
+    'default': dj_database_url.config(
+        # Replace this value with your local database's connection string.
+        default=DATABASE_URL,
+        conn_max_age=97
+    )
+}
 
 
 # Password validation
