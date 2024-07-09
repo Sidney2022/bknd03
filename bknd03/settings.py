@@ -17,7 +17,6 @@ SECRET_KEY = 'django-insecure-ywd$ahfjkipcergf5g@tt#!#$hoi+wk%yjq^1ao0moqsz7@jq&
 DEBUG = False
 
 ALLOWED_HOSTS = ['*', "127.0.0.1", ".vercel.app", ".now.sh"]
-CSRF_TRUSTED_ORIGINS = ['siddevlabs.site', 'www.siddevlabs.site']
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
